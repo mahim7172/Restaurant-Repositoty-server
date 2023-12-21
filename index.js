@@ -1,6 +1,7 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 
@@ -29,9 +30,31 @@ async function run() {
     const menuCollection = client.db("bistroDb").collection("menu");
     const reviewsCollection = client.db("bistroDb").collection("reviews");
     const cardCollection = client.db("bistroDb").collection("card");
-
+    // jwt releted api
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+      res.send({ token });
+    });
+    // middlewares
+    const varifyToken = (req, res, next) => {
+      // console.log("inside varifyed token", req.headers.authorization);
+      if (!req.headers.authorization) {
+        return res.status(401).send({ massage: "forbidden access" });
+      }
+      const token = req.headers.authorization.split(" ")[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ massage: "forbidden access" });
+        }
+        req.decoded = decoded;
+        next();
+      });
+    };
     // users api
-    app.get("/users", async (req, res) => {
+    app.get("/users", varifyToken, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
@@ -51,7 +74,7 @@ async function run() {
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
-          roal: "admin",
+          role: "admin",
         },
       };
       const result = await userCollection.updateOne(filter, updatedDoc);
