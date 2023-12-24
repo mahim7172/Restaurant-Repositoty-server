@@ -55,6 +55,7 @@ async function run() {
         next();
       });
     };
+
     //  use Veryfi admin after verify token
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
@@ -128,6 +129,11 @@ async function run() {
       const result = await menuCollection.find().toArray();
       res.send(result);
     });
+    app.post("/menu", varifyToken, verifyAdmin, async (req, res) => {
+      const item = req.body;
+      const result = await menuCollection.insertOne(item);
+      res.send(result);
+    });
 
     app.get("/reviews", async (req, res) => {
       const result = await reviewsCollection.find().toArray();
@@ -157,9 +163,9 @@ async function run() {
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
