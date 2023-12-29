@@ -207,6 +207,15 @@ async function run() {
       });
     });
 
+    app.get("/payment/:email", varifyToken, async (req, res) => {
+      const query = { email: req.params.email };
+      if (req.params.email !== req.decoded.email) {
+        return res.status(403).send({ massage: "forbidden access" });
+      }
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+    });
+
     app.post("/payment", async (req, res) => {
       const payment = req.body;
       const paymentResult = await paymentCollection.insertOne(payment);
@@ -215,7 +224,7 @@ async function run() {
       console.log("payment info ", payment);
       const query = {
         _id: {
-          $in: paymentResult.cardId.map((id) => new ObjectId(id)),
+          $in: payment.cardId?.map((id) => new ObjectId(id)),
         },
       };
       const deleteResult = await cardCollection.deleteMany(query);
