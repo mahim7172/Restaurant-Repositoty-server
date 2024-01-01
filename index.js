@@ -4,6 +4,14 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const stripe = require("stripe")(process.env.STRIPE_SECRIET_KEY);
+const formData = require("form-data");
+const Mailgun = require("mailgun.js");
+const mailgun = new Mailgun(formData);
+const mg = mailgun.client({
+  username: "api",
+  key: process.env.MAIL_GUN_API_KEY,
+});
+
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -25,7 +33,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const userCollection = client.db("bistroDb").collection("users");
     const menuCollection = client.db("bistroDb").collection("menu");
@@ -228,6 +236,24 @@ async function run() {
         },
       };
       const deleteResult = await cardCollection.deleteMany(query);
+
+      // send user email about payment confirmation
+      mg.messages
+        .create(process.env.MAIL_SENDING_DOMAIN, {
+          from: "Mailgun Sandbox <postmaster@sandbox16e86cffb5de4532a4d2d3541219055c.mailgun.org>",
+          to: ["md286667@gmail.com"],
+          subject: "Hello thank you for your order confirmation",
+          text: "Testing some Mailgun awesomness!",
+          html: `
+          <div>
+          <h2>Thank you for your order </h2>
+          <h3>Your Transaction Id : <strong>${payment.transactionId} </strong></h3>
+          </div>
+          `,
+        })
+        .then((msg) => console.log(msg)) // logs response data
+        .catch((err) => console.log(err)); // logs any error`;
+
       res.send({ paymentResult, deleteResult });
     });
     //  stats ot analytice
@@ -289,12 +315,20 @@ async function run() {
               revenue: { $sum: "$menuItem.price" },
             },
           },
+          {
+            $project: {
+              _id: 0,
+              category: "$_id",
+              quantity: "$quantity",
+              revenue: "$revenue",
+            },
+          },
         ])
         .toArray();
       res.send(result);
     });
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     // console.log(
     //   "Pinged your deployment. You successfully connected to MongoDB!"
     // );
